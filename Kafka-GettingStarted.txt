@@ -1,0 +1,339 @@
+			        Kafka
+.....................................................................................
+			   Event Driven Arch
+.....................................................................................
+Distributed Arch:
+.................
+
+1.Monolothic
+    Single app build,test,deploy,maintain
+2.Microservices
+    Single domain is broken into multiple apps and start communicating each other.
+
+Event driven programming model introduced in 1970s.
+
+Graphical User interface operating systems introduced the concept of event driven programming.
+
+Event is somthing which happened when something is done.
+
+if you "type a character" -action in the keyboard,os sends a signal to hardware layer.
+when ever a character is typed we have to react(respond), character need to be captured and send to the monitor.
+.....................................................................................
+				Program to Program Interaction
+.....................................................................................
+
+In object oriented programming models, object to object interaction.
+Object communications
+why Object need to need communicate?
+  To share data.
+
+Object communication patterns:
+.............................
+
+Objects talk each other via apis .
+
+1.local api call - with in same runtime
+2.Remote api call -(RPC)- IPC(inter process communication)
+   objects may be in two different machines/within same machines(two different process)  - Request -response pattern / Request - Reply
+  Networking
+     =>Transport layer -  protocal layer -  tcp
+     =>Data format
+          =>Serialization and deserialation
+     =>network layer
+         =>ip address,port no 
+Tight Coupling between or among objects(caller , callee)
+MOM Is solution  
+  Message oriented Middlewares - Pub- Sub Pattern
+....................................................................................
+			  Sync and Async == Blocking and Non blocking
+...................................................................................
+Non blocking IO is implemented based on event driven  programming model.
+
+Have you seen any where mom implementation with out message brokers?
+   AKKA -actor models
+vertx,quarkus
+.....................................................................................
+				Histroy of Kafka : Why kafka was created
+....................................................................................
+Use case 1: How does one do an analysis of app metrics?
+
+
+What is kafka?
+  
+Kafka is event streaming platform used to collect,process,store and integrate data at scale.
+Kafka collects data in the form  of events.
+
+What is event?
+ An event is any type of action,incident, or change that is identified or recorded by software or applications.
+  for eg in ecommerce app, a payment,web site link or order processing,inventory recording.
+
+How information is stored?
+  information is stored in database as table which represents the state of something
+eg user - id,name,city.
+
+Can we store events in database?
+  We cant store all events in the database.
+
+Now a days instead of thinking "things" first, people starts thinking events first.
+instead of stroing things into db, we store events.
+
+events also has some state like "things"
+
+"event has some description of what happended with it, but the primary idea is that event is an indication in time that thing took place.
+
+"You cant store every events that happened in the system into database"
+.....................................................................................
+ 	How do you store every events that happended in the system?
+
+Log is the best eg in traditional system we capture about methods calling,transactions,security
+
+log is structured and the sequence of the events occured in the method calls.
+
+eg:
+09:38:14.114 [main] ERROR com.company.Main - Hello there!
+09:38:14.119 [main] FATAL com.company.Main - Hello there!
+
+Just logs in the logger system, why cant we store every activity of the system(events) into a file system called "log".
+
+When we write event into log file, we write little bit of state,little bit of desc what happened.
+
+log is just disk file
+....................................................................................
+			  What is apache kafka?
+
+Kafka is a software system for managining these logs using a fairly standard,the same historical term called "topics".
+
+Topics:
+  The events which are captureed by system, and organized into kafka using the sturcture called "topic"
+ Topic is eq to database table.
+ Topic is logical structure which stores sequence of information.
+ Topic is log of events.
+
+Feature of logs:
+ => logs are easy to understand
+ => logs are append only...
+ => logs are immutable
+ => logs are highly durable
+....................................................................................
+	Kafka is distributed system to capture "data" in the form of 
+events stored into log files later which can be furture processed to create useful reports.
+             Kafka is just a "file Manager,Processor" Applications.
+
+Core concepts of kafka
+
+Kafka storage model - topics,partitioning,segments,offset,message(Record)
+
+Producer---->writes record--Topic----|Partition--|segment--|offset
+.....................................................................................
+			Kafka Setup
+.....................................................................................
+
+Kafka Distribution:
+..................
+1.Apache Kafka
+   It is open source version of kafka
+2.Confluent kafka
+   It is abstraction of apache kafka
+  Confluent is so much more than Apache Kafka
+
+Apache kafka vs Confluent Kafka 
+https://www.confluent.io/apache-kafka-vs-confluent/
+
+Platforms:
+1.bare metal 
+ kafka is distributed for all os
+
+1.windows : may be good for basic use cases
+2.linux  : recommended for advanced use cases
+3.mac : recommended for advanced use cases.
+
+2.VM env
+  you can setup kafka on any industry standard vms -  oracle virtual box
+
+3.Container based distributed - docker and kubernets
+    it is highly recommend for dev and also even in productions.
+
+Bare metal means  Linux is highly recommened:
+............................................
+
+Windows Sub System - Linux -  wsl
+https://www.confluent.io/blog/set-up-and-run-kafka-on-windows-linux-wsl-2/?utm_medium=sem&utm_source=google&utm_campaign=ch.sem_br.nonbrand_tp.prs_tgt.dsa_mt.dsa_rgn.india_lng.eng_dv.all_con.blog&utm_term=&creative=&device=c&placement=&gclid=CjwKCAiAioifBhAXEiwApzCztroeBf99rY2AQ8kqOxzpA4vWwv_pe4qIQ682fYDA6hF9JJSJ6gN61hoCJQwQAvD_BwE.
+
+After installing :
+
+we need to look at folder structure
+
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0$ ls -al
+total 60
+drwxr-xr-x 6 subugee subugee  4096 Jul 28  2020 .
+drwxr-xr-x 3 subugee subugee  4096 Feb  7 16:37 ..
+drwxr-xr-x 3 subugee subugee  4096 Jul 28  2020 bin
+drwxr-xr-x 2 subugee subugee  4096 Jul 28  2020 config
+drwxr-xr-x 2 subugee subugee  4096 Feb  7 16:37 libs
+-rw-r--r-- 1 subugee subugee 29975 Jul 28  2020 LICENSE
+-rw-r--r-- 1 subugee subugee   337 Jul 28  2020 NOTICE
+drwxr-xr-x 2 subugee subugee  4096 Jul 28  2020 site-docs
+.....................................................................................
+			kafka is just  java program
+Kafka is written in java language
+
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0/libs$ ls -al
+total 63964
+drwxr-xr-x 2 subugee subugee     4096 Feb  7 16:37 .
+drwxr-xr-x 6 subugee subugee     4096 Jul 28  2020 ..
+-rw-r--r-- 1 subugee subugee    69409 Apr  3  2018 activation-1.1.1.jar
+-rw-r--r-- 1 subugee subugee    14212 May  8  2019 aopalliance-repackaged-2.5.0.jar
+-rw-r--r-- 1 subugee subugee    90347 May  1  2017 argparse4j-0.7.0.jar
+-rw-r--r-- 1 subugee subugee    20437 Jan 29  2018 audience-annotations-0.5.0.jar
+-rw-r--r-- 1 subugee subugee    53820 Jan 26  2019 commons-cli-1.4.jar
+etc...
+
+lib folder contains all kafka dependencies in the form of jar.
+...................................................................................
+bin folder
+  contains all scripts file for running kafka servers
+  constains subfolder called windows which contains bat files for running kafka in windows os.
+
+
+config$ 
+connect-console-sink.properties    connect-file-source.properties   consumer.properties  tools-log4j.properties
+connect-console-source.properties  connect-log4j.properties         log4j.properties     trogdor.conf
+connect-distributed.properties     connect-mirror-maker.properties  producer.properties  zookeeper.properties
+connect-file-sink.properties       connect-standalone.properties    server.properties
+
+config contains all kafka related settings.
+.....................................................................................
+				Core concepts
+.....................................................................................
+
+Broker:
+
+Since kafka is java program which is deployed on jvm, kafka runs on the jvm process.
+ which is called as "Kafka Server"
+It is composed of network of machines called brokers.
+
+By default Kafka broker is distributed (Scalable-running multiple instance of same broker)
+
+Cluster:
+  A kafka cluster(cluster) is a system that consists of serveral brokers.
+ The cluster helps to distribute workloads equally among replicas.
+
+By default Kafka is clustered (distributed) commit log system.
+
+Every distributed system need to talk each other, some body need to manage cluster.
+
+in order to manage cluster we have cluster management softwares.
+
+ZooKeeper:
+..........
+
+What is ZooKeeper?
+	ZooKeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services.
+
+Without Zookeeper we cant setup kafka cluster.
+
+KRaft:
+    Apache Kafka Raft (KRaft) is the consensus protocol that was introduced to remove Apache Kafka's dependency on ZooKeeper for metadata management.
+
+
+Zookeeper role:
+=>Cluster management
+=>Failure detection and recover
+=>Store ACL & Secrets
+
+Lab 1: Kafka Setup Cluster
+Single Broker,Single Zookeeper
+
+Broker and zookeeper having configurations that has to be loaded as part of server startup.
+configurations are kept inside config folder.
+
+Steps:
+1.Start Zookeeper
+
+./bin/zookeeper-server-start.sh config/zookeeper.properties
+
+zookeeper.properties:
+
+dataDir=/tmp/zookeeper
+  where zookeeper configuration data is kept during runtime.
+
+# the port at which the clients will connect
+clientPort=2181
+
+# Disable the adminserver by default to avoid port conflicts.
+# Set the port to something non-conflicting if choosing to enable this
+admin.enableServer=false
+# admin.serverPort=8080
+
+2.Start Kafka Server
+
+./bin/kafka-server-start.sh config/server.properties
+
+server.properties
+
+log.dirs=/tmp/kafkalogs
+....................................................................................
+				Topic
+....................................................................................
+
+What is Topic?
+
+How to create Topic?
+
+Internal Structure of Topic?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
