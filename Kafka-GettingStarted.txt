@@ -272,24 +272,299 @@ admin.enableServer=false
 server.properties
 
 log.dirs=/tmp/kafkalogs
+.....................................................................................
+How to start kafka and zookeeper server in background?
+
+./bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+
+./bin/kafka-server-start.sh -daemon config/server.properties
+
+Test servers are running:
+ telnet  localhost 2181
+ telnet  localhost 9092
+.....................................................................................
+			Overall Archiecture of Kafka
+
+Kafka is a data streaming system that allows developers to react to new events as they occur in real time. Kafka architecture consists of a storage layer and a compute layer. The storage layer is designed to store data efficiently and is a distributed system such that if your storage needs grow over time you can easily scale out the system to accommodate the growth. The compute layer consists of four core components—the producer, consumer, streams, and connector APIs, which allow Kafka to scale applications across distributed systems. 
+
+Producer and Consumer APIs
+The foundation of Kafka’s powerful application layer is two primitive APIs for accessing the storage—the producer API for writing events and the consumer API for reading them. On top of these are APIs built for integration and processing.
+
+Kafka Connect
+Kafka Connect, which is built on top of the producer and consumer APIs, provides a simple way to integrate data across Kafka and external systems. Source connectors bring data from external systems and produce it to Kafka topics. Sink connectors take data from Kafka topics and write it to external systems.
+
+Kafka Streams
+For processing events as they arrive, we have Kafka Streams, a Java library that is built on top of the producer and consumer APIs. Kafka Streams allows you to perform real-time stream processing, powerful transformations, and aggregations of event data.
+
+ksqlDB
+Building on the foundation of Kafka Streams, we also have ksqlDB, a streaming database which allows for similar processing but with a declarative SQL-like syntax.
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+Event
+An event is a record of something that happened that also provides information about what happened. Examples of events are customer orders, payments, clicks on a website, or sensor readings. An event shouldn’t be too large. A 10GB video is not a good event. A reference to the location of that video in an object store is.
+
+An event record consists of a timestamp, a key, a value, and optional headers. The event payload is usually stored in the value. The key is also optional, but very helpful for event ordering, colocating events across topics, and key-based storage or compaction.
+
+Schema registry:
+
+In Kafka, the key and value are stored as byte arrays which means that clients can work with any type of data that can be serialized to bytes.
+
+A popular format among Kafka users is Avro, which is also supported by Confluent Schema Registry.
+
+When integrated with Schema Registry, the first byte of an event will be a magic byte which signifies that this event is using a schema in the Schema Registry. The next four bytes make up the schema ID that can be used to retrieve the schema from the registry, and the rest of the bytes contain the event itself. Schema Registry also supports Protobuf and JSON schema formats.
 ....................................................................................
 				Topic
 ....................................................................................
 
 What is Topic?
+  Topic is logical structure of storing events(records,messages) into kafka broker(cluster) which is eq to table.
 
 How to create Topic?
+ Kafka cli provides a script called "kafka-topics.sh"
 
-Internal Structure of Topic?
-
-
-
-
-
-
-
+Using this script
+=>create topic
+=>list topics
+=>describe topic
+=>delete topic
 
 
+Get Help 
+./bin/kafka-topics.sh
+
+Create, delete, describe, or change a topic.
+
+Option                                   Description
+------                                   -----------
+--alter                                  Alter the number of partitions,
+                                           replica assignment, and/or
+                                           configuration for the topic.
+--at-min-isr-partitions                  if set when describing topics, only
+                                           show partitions whose isr count is
+                                           equal to the configured minimum. Not
+                                           supported with the --zookeeper
+                                           option.
+--bootstrap-server <String: server to    REQUIRED: The Kafka server to connect
+  connect to>                              to. In case of providing this, a
+                                           direct Zookeeper connection won't be
+                                           required.
+--command-config <String: command        Property file containing configs to be
+  config property file>                    passed to Admin Client. This is used
+                                           only with --bootstrap-server option
+                                           for describing and altering broker
+                                           configs.
+--config <String: name=value>            A topic configuration override for the
+                                           topic being created or altered.The
+                                           following is a list of valid
+                                           configurations:
+                                                cleanup.policy
+                                                compression.type
+                                                delete.retention.ms
+                                                file.delete.delay.ms
+                                                flush.messages
+                                                flush.ms
+                                                follower.replication.throttled.
+                                           replicas
+                                                index.interval.bytes
+                                                leader.replication.throttled.replicas
+                                                max.compaction.lag.ms
+                                                max.message.bytes
+                                                message.downconversion.enable
+                                                message.format.version
+                                                message.timestamp.difference.max.ms
+                                                message.timestamp.type
+                                                min.cleanable.dirty.ratio
+                                                min.compaction.lag.ms
+                                                min.insync.replicas
+                                                preallocate
+                                                retention.bytes
+                                                retention.ms
+                                                segment.bytes
+                                                segment.index.bytes
+                                                segment.jitter.ms
+                                                segment.ms
+                                                unclean.leader.election.enable
+                                         See the Kafka documentation for full
+                                           details on the topic configs.It is
+                                           supported only in combination with --
+                                           create if --bootstrap-server option
+                                           is used.
+--create                                 Create a new topic.
+--delete                                 Delete a topic
+--delete-config <String: name>           A topic configuration override to be
+                                           removed for an existing topic (see
+                                           the list of configurations under the
+                                           --config option). Not supported with
+                                           the --bootstrap-server option.
+--describe                               List details for the given topics.
+--disable-rack-aware                     Disable rack aware replica assignment
+--exclude-internal                       exclude internal topics when running
+                                           list or describe command. The
+                                           internal topics will be listed by
+                                           default
+--force                                  Suppress console prompts
+--help                                   Print usage information.
+--if-exists                              if set when altering or deleting or
+                                           describing topics, the action will
+                                           only execute if the topic exists.
+--if-not-exists                          if set when creating topics, the
+                                           action will only execute if the
+                                           topic does not already exist.
+--list                                   List all available topics.
+--partitions <Integer: # of partitions>  The number of partitions for the topic
+                                           being created or altered (WARNING:
+                                           If partitions are increased for a
+                                           topic that has a key, the partition
+                                           logic or ordering of the messages
+                                           will be affected). If not supplied
+                                           for create, defaults to the cluster
+                                           default.
+--replica-assignment <String:            A list of manual partition-to-broker
+  broker_id_for_part1_replica1 :           assignments for the topic being
+  broker_id_for_part1_replica2 ,           created or altered.
+  broker_id_for_part2_replica1 :
+  broker_id_for_part2_replica2 , ...>
+--replication-factor <Integer:           The replication factor for each
+  replication factor>                      partition in the topic being
+                                           created. If not supplied, defaults
+                                           to the cluster default.
+--topic <String: topic>                  The topic to create, alter, describe
+                                           or delete. It also accepts a regular
+                                           expression, except for --create
+                                           option. Put topic name in double
+                                           quotes and use the '\' prefix to
+                                           escape regular expression symbols; e.
+                                           g. "test\.topic".
+--topics-with-overrides                  if set when describing topics, only
+                                           show topics that have overridden
+                                           configs
+--unavailable-partitions                 if set when describing topics, only
+                                           show partitions whose leader is not
+                                           available
+--under-min-isr-partitions               if set when describing topics, only
+                                           show partitions whose isr count is
+                                           less than the configured minimum.
+                                           Not supported with the --zookeeper
+                                           option.
+--under-replicated-partitions            if set when describing topics, only
+                                           show under replicated partitions
+--version                                Display Kafka version.
+--zookeeper <String: hosts>              DEPRECATED, The connection string for
+                                           the zookeeper connection in the form
+                                           host:port. Multiple hosts can be
+                                           given to allow fail-over.
+
+
+
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0$ ./bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic demo-topic
+Created topic demo-topic.
+
+How topic is represented inside disk?
+
+ \tmp\kafka-logs
+         |
+         demo-topic-0
+
+Topic is nothing but folder 
+   here our topic name was demo-topic but what is "0" ? This is broker id
+.....................................................................................
+			     partition
+.....................................................................................
+Partitions:
+  In order to distribute the "storage and processing of events" in a topic, Kafka uses the concept of partitions.
+
+ A topic is made up of one or more partitions and these partitions can reside on different nodes in the Kafka cluster.
+
+The partition is the main unit of storage for Kafka events, although with Tiered Storage, which we’ll talk about later, some event storage is moved off of partitions. The partition is also the main unit of parallelism. Events can be produced to a topic in parallel by writing to multiple partitions at the same time. Likewise, consumers can spread their workload by individual consumer instances reading from different partitions. If we only used one partition, we could only effectively use one consumer instance.
+
+
+How to describe how many partitions are there for a topic?
+
+./bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic demo-topic
+Topic: demo-topic  
+  
+PartitionCount: 1   ReplicationFactor: 1    Configs: segment.bytes=1073741824
+Topic: demo-topic    Partition: 0    Leader: 0       Replicas: 0     Isr: 0
+
+How to distribute messages into different partitions?
+
+ ./bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic ibm-topic --partitions 3
+Created topic ibm-topic.
+
+After creating lets look at /tmp/kafka-logs folder
+
+/tmp/kafka-logs
+ibm-topic-0  => 0 partition number
+ibm-topic-1
+ibm-topic-2
+
+./bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic ibm-topic
+
+./bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic ibm-topic
+ Topic: ibm-topic  
+
+PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+Topic: ibm-topic        Partition: 0    Leader: 0       Replicas: 0     Isr: 0
+Topic: ibm-topic        Partition: 1    Leader: 0       Replicas: 0     Isr: 0
+Topic: ibm-topic        Partition: 2    Leader: 0       Replicas: 0     Isr: 0
+.................................................................................
+				  Segment
+..................................................................................
+
+Topic is broken into Partition, Partition is broken into Segment.
+
+What is segment is nothing but a single log file.
+Each segment is stored in a single data file on the disk attached to the broker.
+
+How to list segments(log files)?
+
+/tmp/kafka-logs/ibm-topic-0$ ls -l
+total 4
+-rw-r--r-- 1 subugee subugee 10485760 Feb  8 16:37 00000000000000000000.index
+-rw-r--r-- 1 subugee subugee        0 Feb  8 16:37 00000000000000000000.log
+-rw-r--r-- 1 subugee subugee 10485756 Feb  8 16:37 00000000000000000000.timeindex
+-rw-r--r-- 1 subugee subugee        8 Feb  8 16:37 leader-epoch-checkpoint
+
+Here Segment is group of files
+ .log
+ .index
+ .timeindex
+  leader-epoch-chechkpoint
+  partition.metadata
+
+Segment is just log file where real data(Record/Message) is storied in the form of byte array.
+
+Points:
+ =>Once the topic is created initally only one segment file would be there.
+ =>We can have multiple segment file, based on two properties configured 
+     # The maximum size of a log segment file. When this size is reached a new log         segment will be created.
+   log.segment.bytes=1073741824
+   log.segment.ms|days|hours=5000000
+      The kafka stores data for next 5 days, after that it creates new segment file
+...................................................................................
+		   How data(record/message is written into segment)
+..................................................................................
+
+log file contains two parts
+
+offset : it is  sequence of number added into the file for referencing
+payload : bytes
+
+index file:
+ Contains the mappings of offset to its position in ".log" file
+
+timeindex file:
+  File contains the mappings of timestamp to message offset
+  Used to search messages based on timestamp.
+
+How to verify the log details(message logs) ?
+
+./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --deep-iteration --print-data-log --files /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
+Dumping /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
+Starting offset: 0
+
+How to publish Message(record)? How to select partition? How to select segement?
 
 
 
@@ -299,20 +574,6 @@ Internal Structure of Topic?
 
 
 
-
-
-
-
-
-
-
-
-
-
- 
-
-
- 
 
 
 
