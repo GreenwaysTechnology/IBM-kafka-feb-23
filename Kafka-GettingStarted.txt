@@ -563,38 +563,473 @@ How to verify the log details(message logs) ?
 ./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --deep-iteration --print-data-log --files /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
 Dumping /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
 Starting offset: 0
+..................................................................................
 
-How to publish Message(record)? How to select partition? How to select segement?
+How to publish record(message/event)?
+
+./bin/kafka-console-producer.sh
+
+Missing required option(s) [bootstrap-server]
+
+Option                                   Description
+------                                   -----------
+--batch-size <Integer: size>             Number of messages to send in a single
+                                           batch if they are not being sent
+                                           synchronously. (default: 200)
+--bootstrap-server <String: server to    REQUIRED unless --broker-list
+  connect to>                              (deprecated) is specified. The server
+                                           (s) to connect to. The broker list
+                                           string in the form HOST1:PORT1,HOST2:
+                                           PORT2.
+--broker-list <String: broker-list>      DEPRECATED, use --bootstrap-server
+                                           instead; ignored if --bootstrap-
+                                           server is specified.  The broker
+                                           list string in the form HOST1:PORT1,
+                                           HOST2:PORT2.
+--compression-codec [String:             The compression codec: either 'none',
+  compression-codec]                       'gzip', 'snappy', 'lz4', or 'zstd'.
+                                           If specified without value, then it
+                                           defaults to 'gzip'
+--help                                   Print usage information.
+--line-reader <String: reader_class>     The class name of the class to use for
+                                           reading lines from standard in. By
+                                           default each line is read as a
+                                           separate message. (default: kafka.
+                                           tools.
+                                           ConsoleProducer$LineMessageReader)
+--max-block-ms <Long: max block on       The max time that the producer will
+  send>                                    block for during a send request
+                                           (default: 60000)
+--max-memory-bytes <Long: total memory   The total memory used by the producer
+  in bytes>                                to buffer records waiting to be sent
+                                           to the server. (default: 33554432)
+--max-partition-memory-bytes <Long:      The buffer size allocated for a
+  memory in bytes per partition>           partition. When records are received
+                                           which are smaller than this size the
+                                           producer will attempt to
+                                           optimistically group them together
+                                           until this size is reached.
+                                           (default: 16384)
+--message-send-max-retries <Integer>     Brokers can fail receiving the message
+                                           for multiple reasons, and being
+                                           unavailable transiently is just one
+                                           of them. This property specifies the
+                                           number of retires before the
+                                           producer give up and drop this
+                                           message. (default: 3)
+--metadata-expiry-ms <Long: metadata     The period of time in milliseconds
+  expiration interval>                     after which we force a refresh of
+                                           metadata even if we haven't seen any
+                                           leadership changes. (default: 300000)
+--producer-property <String:             A mechanism to pass user-defined
+  producer_prop>                           properties in the form key=value to
+                                           the producer.
+--producer.config <String: config file>  Producer config properties file. Note
+                                           that [producer-property] takes
+                                           precedence over this config.
+--property <String: prop>                A mechanism to pass user-defined
+                                           properties in the form key=value to
+                                           the message reader. This allows
+                                           custom configuration for a user-
+                                           defined message reader. Default
+                                           properties include:
+                                                parse.key=true|false
+                                                key.separator=<key.separator>
+                                                ignore.error=true|false
+--request-required-acks <String:         The required acks of the producer
+  request required acks>                   requests (default: 1)
+--request-timeout-ms <Integer: request   The ack timeout of the producer
+  timeout ms>                              requests. Value must be non-negative
+                                           and non-zero (default: 1500)
+--retry-backoff-ms <Integer>             Before each retry, the producer
+                                           refreshes the metadata of relevant
+                                           topics. Since leader election takes
+                                           a bit of time, this property
+                                           specifies the amount of time that
+                                           the producer waits before refreshing
+                                           the metadata. (default: 100)
+--socket-buffer-size <Integer: size>     The size of the tcp RECV size.
+                                           (default: 102400)
+--sync                                   If set message send requests to the
+                                           brokers are synchronously, one at a
+                                           time as they arrive.
+--timeout <Integer: timeout_ms>          If set and the producer is running in
+                                           asynchronous mode, this gives the
+                                           maximum amount of time a message
+                                           will queue awaiting sufficient batch
+                                           size. The value is given in ms.
+                                           (default: 1000)
+--topic <String: topic>                  REQUIRED: The topic id to produce
+                                           messages to.
+--version                                Display Kafka version.
 
 
+Note:
+We are going to publish message into topic only
+
+producer--->record-->publish---Topic|---partitions--|each partition has its own log file.
+
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic
+>Hello IBM
+press ctrl key
+
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0$ ./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --deep-iteration --print-data-log --files /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
+Dumping /tmp/kafka-logs/ibm-topic-0/00000000000000000000.log
+Starting offset: 0
+
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0$ ./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --deep-iteration --print-data-log --files /tmp/kafka-logs/ibm-topic-1/00000000000000000000.log
+
+Dumping /tmp/kafka-logs/ibm-topic-1/00000000000000000000.log
+
+Starting offset: 0
+baseOffset: 0 lastOffset: 0 count: 1 baseSequence: -1 lastSequence: -1 producerId: -1 producerEpoch: -1 partitionLeaderEpoch: 0 isTransactional: false isControl: false position: 0 CreateTime: 1675933782330 size: 77 magic: 2 compresscodec: NONE crc: 2826934114 isvalid: true
+| offset: 0 CreateTime: 1675933782330 keysize: -1 valuesize: 9 sequence: -1 headerKeys: [] payload: Hello IBM
 
 
+subugee@LAPTOP-R2TGGFDL:~/session/kafka_2.13-2.6.0$ ./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --deep-iteration --print-data-log --files /tmp/kafka-logs/ibm-topic-2/00000000000000000000.log
+
+Dumping /tmp/kafka-logs/ibm-topic-2/00000000000000000000.log
+Starting offset: 0
+.....................................................................................
+			How producers publish messages?
+....................................................................................
 
 
+Publish Message:
+
+Producer Default Partitioner & Sticky Partitioner:
+
+	A partitioner is the process that will determine to which partition a specific message will be assigned to.
+       In nutshell Partitioner is simple java class / program , having routing algorthim (which partition to be selected) for eg i have 3 partition, which partition i have to send "this" message.
+
+How partitions is selected by Partitioner?
+ =>Based on Record only
+      
+Partitioner when key!=null, Having Key
+.......................................
+
+ if record is having key,
+
+   Key Hashing is the process of determining the mapping of a key to a partition In the default Kafka partitioner, the keys are hashed using the murmur2 algorithm
+
+targetPartition = Math.abs(Utils.murmur2(keyBytes)) % (numPartitions - 1)
+
+This means that same key will go to the same partition and adding partitions to a topic will completely alter the formula. It is most likely preferred to not override the behavior of the partitioner, but it is possible to do so using partitioner.class.
+
+Partitioner when key=null
+.........................
+
+When key=null, the producer has a default partitioner that varies:
+
+Round Robin: for Kafka 2.3 and below
+
+Sticky Partitioner: for Kafka 2.4 and above
+
+Sticky Partitioner improves the performance of the producer especially with high throughput.
 
 
+RoundRobin:
+With Kafka ≤ v2.3, when there’s no partition and no key specified, the default partitioner sends data in a round-robin fashion. This results in more batches (one batch per partition) and smaller batches (imagine with 100 partitions). And this is a problem because smaller batches lead to more requests as well as higher latency.
+
+Sticky Partitioner (Kafka ≥ 2.4)
+
+It is a performance goal to have all the records sent to a single partition and not multiple partitions to improve batching.
+
+The producer sticky partitioner will:
+
+“stick” to a partition until the batch is full or linger.ms has elapsed
+
+After sending the batch, change the partition that is "sticky"
+
+This will lead to larger batches and reduced latency (because we have larger requests, and the batch.size is more likely to be reached). Over time, the records are still spread evenly across partitions, so the balance of the cluster is not affected.
+
+Overall, there are some substantial performance improvements by using the Sticky Partitioner.
+
+Stick Patitioner = Batching + Round Robin
+Lab:
+Publish Message without Key
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic
+>Hello
+Press ctrl key
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic
+>How are you
+
+Press ctrl key
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic
+>Welcome
+....................................................................................
+				Publish Record with Keys
+.....................................................................................
+
+By default publishers send records without key called key is null
+
+if you want to send Record with key there are additional properties need to passed/configured as part of cli.
+
+--property <String: prop>                A mechanism to pass user-defined
+                                           properties in the form key=value to
+                                           the message reader. This allows
+                                           custom configuration for a user-
+                                           defined message reader. Default
+                                           properties include:
+                                                parse.key=true|false
+                                                key.separator=<key.separator>
+                                                ignore.error=true|false
+
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic --property "key.separator=:" --property "parse.key=true"
+...................................................................................
+				Consumer
+...................................................................................
+How to consume records?
+
+=> Find kafka host name and port no eg : localhost:9092
+=> Provide topic name eg  ibm-topic
+=> if you want to read future message(current message published) 
+=> if you want to read histrical message, --from-beginning option
+=> we can  use kafka-console-consumer.sh 
 
 
+ ./bin/kafka-console-consumer.sh
+This tool helps to read data from Kafka topics and outputs it to standard output.
+Option                                   Description
+------                                   -----------
+--bootstrap-server <String: server to    REQUIRED: The server(s) to connect to.
+  connect to>
+--consumer-property <String:             A mechanism to pass user-defined
+  consumer_prop>                           properties in the form key=value to
+                                           the consumer.
+--consumer.config <String: config file>  Consumer config properties file. Note
+                                           that [consumer-property] takes
+                                           precedence over this config.
+--enable-systest-events                  Log lifecycle events of the consumer
+                                           in addition to logging consumed
+                                           messages. (This is specific for
+                                           system tests.)
+--formatter <String: class>              The name of a class to use for
+                                           formatting kafka messages for
+                                           display. (default: kafka.tools.
+                                           DefaultMessageFormatter)
+--from-beginning                         If the consumer does not already have
+                                           an established offset to consume
+                                           from, start with the earliest
+                                           message present in the log rather
+                                           than the latest message.
+--group <String: consumer group id>      The consumer group id of the consumer.
+--help                                   Print usage information.
+--isolation-level <String>               Set to read_committed in order to
+                                           filter out transactional messages
+                                           which are not committed. Set to
+                                           read_uncommitted to read all
+                                           messages. (default: read_uncommitted)
+--key-deserializer <String:
+  deserializer for key>
+--max-messages <Integer: num_messages>   The maximum number of messages to
+                                           consume before exiting. If not set,
+                                           consumption is continual.
+--offset <String: consume offset>        The offset id to consume from (a non-
+                                           negative number), or 'earliest'
+                                           which means from beginning, or
+                                           'latest' which means from end
+                                           (default: latest)
+--partition <Integer: partition>         The partition to consume from.
+                                           Consumption starts from the end of
+                                           the partition unless '--offset' is
+                                           specified.
+--property <String: prop>                The properties to initialize the
+                                           message formatter. Default
+                                           properties include:
+                                                print.timestamp=true|false
+                                                print.key=true|false
+                                                print.value=true|false
+                                                key.separator=<key.separator>
+                                                line.separator=<line.separator>
+                                                key.deserializer=<key.deserializer>
+                                                value.deserializer=<value.
+                                           deserializer>
+                                         Users can also pass in customized
+                                           properties for their formatter; more
+                                           specifically, users can pass in
+                                           properties keyed with 'key.
+                                           deserializer.' and 'value.
+                                           deserializer.' prefixes to configure
+                                           their deserializers.
+--skip-message-on-error                  If there is an error when processing a
+                                           message, skip it instead of halt.
+--timeout-ms <Integer: timeout_ms>       If specified, exit if no message is
+                                           available for consumption for the
+                                           specified interval.
+--topic <String: topic>                  The topic id to consume on.
+--value-deserializer <String:
+  deserializer for values>
+--version                                Display Kafka version.
+--whitelist <String: whitelist>          Regular expression specifying
+                                           whitelist of topics to include for
+                                           consumption.
 
+eg:
+./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ibm-topic --from-beginning
+Hello IBM
+Hai IBM
+1
+2
+A
+B
+c
+d
+Welcome to IBM
+.....................................................................................
 
+How to print records with extra properties?
 
+Time Stamp:
+ ./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ibm-topic --from-beginning --property print.timestamp=true
+CreateTime:1675933782330        Hello IBM
+CreateTime:1675934204015        Hai IBM
+CreateTime:1675936991017        1
+CreateTime:1675936994936        2
+CreateTime:1675936998681        A
+CreateTime:1675937002418        B
+CreateTime:1675937006054        c
+CreateTime:1675937018086        d
+CreateTime:1675939290483        kafka is good for event streaming
+CreateTime:1675939291102
+CreateTime:1675934174429        Welcome to IBM
+CreateTime:1675939322905        kafka uses partition to distribute topic across the nodes
 
+How to print records with key,value:
 
+./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ibm-topic --from-beginning --property print.timestamp=true --property print.key=true --property print.value=true
+CreateTime:1675933782330        null    Hello IBM
+CreateTime:1675934204015        null    Hai IBM
+CreateTime:1675936991017        id      1
+CreateTime:1675936994936        id      2
+CreateTime:1675936998681        name    A
+CreateTime:1675937002418        name    B
+CreateTime:1675937006054        city    c
+CreateTime:1675937018086        city    d
+CreateTime:1675939290483        null    kafka is good for event streaming
+CreateTime:1675939291102        null
+CreateTime:1675934174429        null    Welcome to IBM
+CreateTime:1675939322905        null    kafka uses partition to distribute topic across the nodes
+....................................................................................
+How to list partition on which the message is published?
 
+--print.partition=true
 
+Produce data with key and with out key and watch which partition is selected
+............................................................................
 
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic ibm-topic --property "key.separator=:" --property "parse.key=true"
+>project:kafka
+>project:java
+>project:microservice
+>client:google
+>client:ibm
+>client:microsoft
+>client:facebook
+>payment:gpay
+>payment:neft
+>payment:rtgs
+>transport:bus
+>trapnsport:car
+>skill:java
+>id:2
+>
 
+Consumer:
+ ./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ibm-topic --from-beginning  --property print.key=true --property print.value=true --property print.partition=true
+salary  2333    2
+null    test    2
+null    Hello IBM       1
+null    Hai IBM 1
+id      1       1
+id      2       1
+name    A       1
+name    B       1
+city    c       1
+city    d       1
+null    kafka is good for event streaming       1
+null            1
+null    Welcome to IBM  0
+null    kafka uses partition to distribute topic across the nodes       0
+null    java    0
+null    100     2
+null    200     0
+null    300     2
+null    500     1
+null    800     0
+project kafka   0
+project java    0
+project microservice    0
+client  google  1
+client  ibm     1
+client  microsoft       1
+client  facebook        1
+payment gpay    2
+payment neft    2
+payment rtgs    2
+transport       bus     2
+trapnsport      car     2
+skill   java    2
+id      2       1
 
+.....................................................................................
 
+How to print offset infromation?
 
+--property print.offset
 
+....................................................................................
+			     Consumer Groups
 
+Consumers that are part of the same application and therefore perform the same logical job can grouped togther as a kafka consumer group.
 
+A topic consits of many partitions.
 
+Partions are are unit of paralleism for kafka consumers.
 
-
-
-
-
-
+Why consumer group?
    
+ The consumers in the group who can balance of reading data from the partitions
+ Parallely
+
+Kafka Consumer Group Id:
+................
+  in order to indicate to kafka consumers that they are part of the same specfic group, we must specify the consumer side setting group.id
+
+Setting up Consumer Group:
+
+1.you must have topic with min of two partitions
+2.when you run consumer , need to assign group with --group option
+3.open two or many consumer terminals based on your need.
+4.you have to publish data to topic where you can see how consumers sharing the reads
+
+ ./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ibm-topic --group ibmgroup --property print.partition=true
+90000   1
+40000   0
+23333   1
+hello   0
+.....................................................................................
+				Producer Reslience
+....................................................................................
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
