@@ -1009,11 +1009,29 @@ Setting up Consumer Group:
 23333   1
 hello   0
 .....................................................................................
-				Producer Reslience
-....................................................................................
-
-
+			  Kafka Internal Arch - Cluster Setup
+.....................................................................................
  
+Replication steps:
+
+Replication process is very lengthy process.
+We can break the process into stages
+
+1.Request - Response Stage
+  =>The follower gives request and Leader  gives response
+  =>The request could be the asking offset
+
+2.Commit Stage
+   The records which has been written into the Leader and follower replicas
+  need to be persisted into disk so that consumers can read.
+  The consumers can read records only if it has been committed.
+
+3.Leader failure
+   Leader selection is taken care by Control Plan(zookeeper,KRaft)
+   Leader election once is completed Control Plan communicates other followers
+   Consumers will get error "Offset_Not_Available" with retrable status.
+   
+
 
 
 
