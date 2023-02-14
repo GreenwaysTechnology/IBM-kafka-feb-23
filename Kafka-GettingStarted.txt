@@ -1031,6 +1031,464 @@ We can break the process into stages
    Leader election once is completed Control Plan communicates other followers
    Consumers will get error "Offset_Not_Available" with retrable status.
    
+4.Reconcilation Phase
+
+
+Cluster setup:
+
+
+3 Node Kafka Cluster in local machine:
+......................................
+
+Have three kafka distribution
+
+subugee@LAPTOP-R2TGGFDL:~/session/clustersetup$ ls -l
+total 12
+drwxr-xr-x 3 subugee subugee 4096 Feb 13 17:11 KafkaNode1
+drwxr-xr-x 3 subugee subugee 4096 Feb 13 17:10 KafkaNode2
+drwxr-xr-x 3 subugee subugee 4096 Feb 13 17:11 KafkaNode3
+
+When creating a topic, we have to provide a partition count and the replication factor
+
+For instance, you can consider that you have a cluster consisting of 3 brokers namely Broker 1,  Broker 2 & Broker 3. 
+
+A Topic-X is created with partition 1 and partition 0.
+
+If you set up the Kafka Replication Factor as 2, then you find that now Partition 0 has a replica in Broker 1 & 2 and Partition 1 has a replica in Broker 2 & 3
+
+Kafka chooses one partition as a leader and the rest of the replicas are selected as the followers
+
+Sever Configuration:
+ /config/server.properties
+
+Every kafka broker is identified by broker id
+broker.id=1
+
+Every broker must indentified in the network 
+listeners=PLAINTEXT://localhost:9092
+
+Log Dir Configuration:
+ Kafka Stores events into log file, each server must have its own log dirctories
+
+Control Plane Configuration(ZooKeeper):
+.......................................
+
+in order to manage kafka brokers , we use control plane called zoo keeper.
+
+you can run zookeeper in multiple instance too..
+Why in order to enable fault tolerance?
+
+# Zookeeper connection string (see zookeeper docs for details).
+# This is a comma separated host:port pairs, each corresponding to a zk
+# server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002".
+# You can also append an optional chroot string to the urls to specify the
+# root directory for all kafka znodes.
+zookeeper.connect=localhost:2181
+
+multiple zoo keeper configuration
+
+
+Start servers:
+...............
+
+./bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+
+./bin/kafka-server-start.sh -daemon  config/server-1.properties
+./bin/kafka-server-start.sh -daemon  config/server-2.properties
+./bin/kafka-server-start.sh -daemon  config/server-3.properties
+
+ echo dump | nc localhost 2181 | grep brokers
+        /brokers/ids/1
+        /brokers/ids/2
+        /brokers/ids/3
+
+
+
+echo dump | nc localhost 2181
+SessionTracker dump:
+Session Sets (3)/(3):
+0 expire at Mon Feb 13 19:42:48 IST 2023:
+0 expire at Mon Feb 13 19:42:54 IST 2023:
+3 expire at Mon Feb 13 19:43:00 IST 2023:
+        0x10000189db40002
+        0x10000189db40000
+        0x10000189db40001
+ephemeral nodes dump:
+Sessions with Ephemerals (3):
+0x10000189db40000:
+        /controller
+        /brokers/ids/1
+0x10000189db40001:
+        /brokers/ids/2
+0x10000189db40002:
+        /brokers/ids/3
+Connections dump:
+Connections Sets (2)/(4):
+0 expire at Mon Feb 13 19:42:51 IST 2023:
+4 expire at Mon Feb 13 19:43:01 IST 2023:
+        ip: /127.0.0.1:44422 sessionId: 0x10000189db40001
+        ip: /127.0.0.1:44426 sessionId: 0x10000189db40002
+        ip: /127.0.0.1:44416 sessionId: 0x10000189db40000
+        ip: /127.0.0.1:44432 sessionId: 0x0
+
+
+./bin/kafka-topics.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094,localhost:9095 --create --topic ibm-topic-tmp --partitions 1 --replication-factor 3
+
+./bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic ibm-topic-tmp
+Topic: ibm-topic-tmp    PartitionCount: 1       ReplicationFactor: 3    Configs: segment.bytes=1073741824
+        Topic: ibm-topic-tmp    Partition: 0    Leader: 1       Replicas: 1,2,3 Isr: 1,2,3
+
+
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094,localhost:9095  --topic ibm-topic-tmp 
+
+ ./bin/kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094 --topic ibm-topic --from-beginning   --property print.partition=true
+ 
+....................................................................................
+			   Producer Reslient Configuration
+
+How does producer know the the records(events) submitted succfully?
+How does producer get to know the records/logs saved?
+
+Ack(Acknowledgement):
+.....................
+An ack is acknowledgement that the producer gets from the broker to ensure that the message has been successfully committed to that broker.
+
+ack=0(None) : Fire and forget 
+ The producer never want the response that whether message procecessed or not..
+ 
+ack=1(Leader): Leader has committed the record into log
+  The producer expects the that if leader has committed then, the process success.
+
+ack=1(All) : The leader and follower must have committed log.
+ The producer expects both leader and follower must have saved record into log file.
+
+/bin/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094  --topic ibm-topic --request-required-acks 1
+
+Note : in the cli we cant get the status, if we write any application code, the application api provides some value to ensure that it has been proccessed  or not.
+...................................................................................
+What if ack is not success?if producer gets error as response?
+
+Producer will send retry request with existing record,which may cause duplicate record
+
+How to avoid duplicate message?
+ In some situations where a message has actually been committed to all in sync replica, but the broker could not send an ack back due to a network issue
+
+mean while we have set retry=3
+ the producer will resend messages 3 times this could  lead to duplicate messages in the topc.
+
+in order to avoid we need to make producer idempotent.
+  Idempontent means an operation once or applying it multiple times have the same effect.
+How to configure this?
+ 
+"enable.idempotent=true"
+
+./bin/kafka-console-producer.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094  --topic ibm-topic --request-required-acks 1 --property enable.idempotent=true
+
+
+max.in.flight.requests.per.connection:
+  The maxmimum number of unacknolwedged requests the client will send on a single connection before blocking.
+.....................................................................................					Kafka Streams and KSQLDB
+....................................................................................
+
+What is kafka stream?
+  It is java lib/api , to transform,filter,map through kafka topic events/records in declarative style.
+
+ My topic contains lets say payment transactions, i want to store only credit records into another topic like so...
+
+Kafka streams are java and scala specific api to process data from the topic using java streams apis like transform,map,filter....
+
+What is Ksql Database?
+  The database built for streaming processing applications
+
+Why KSQL?
+  Streams are java apis so other applications cant use that api directly so that this abstraction was built on the top of streams api and kafka topic..
+
+How to start setting up ksql infrastructure?
+
+1.broker
+2.ksqldb engine
+3.ksqldb cli
+4.zookeeper
+
+
+Docker compose : docker-compose.yml
+  # Docker compose from bringing up a local ksqlDB cluster and dependencies.
+  #
+  # By default, the cluster has two ksqlDB servers. You can scale the number of ksqlDB nodes in the
+  # cluster by using the docker `--scale` command line arg.
+  #
+  # e.g. for a 4 node cluster run:
+  # > docker-compose up --scale additional-ksqldb-server=3
+  #
+  # or a 1 node cluster run:
+  # > docker-compose up --scale additional-ksqldb-server=0
+  #
+  # The default is one `primary-ksqldb-server` and one `additional-ksqdb-server`. The only
+  # difference is that the primary node has a well-known port exposed so clients can connect, where
+  # as the additional nodes use auto-port assignment so that ports don't clash.
+  #
+  # If you wish to run with locally built ksqlDB docker images then:
+  #
+  # 1. Follow the steps in https://github.com/confluentinc/ksql/blob/master/ksqldb-docker/README.md
+  # to build a ksqlDB docker image with local changes.
+  #
+  # 2. Update .env file to use your local images by setting KSQL_IMAGE_BASE=placeholder/ and KSQL_VERSION=local.build.
+
+  #---
+  version: '2'
+  services:
+    zookeeper:
+      image: confluentinc/cp-zookeeper:${CP_VERSION}
+      environment:
+        ZOOKEEPER_CLIENT_PORT: 32181
+        ZOOKEEPER_TICK_TIME: 2000
+
+    kafka:
+      image: confluentinc/cp-enterprise-kafka:${CP_VERSION}
+      ports:
+        - "29092:29092"
+      depends_on:
+        - zookeeper
+      environment:
+        KAFKA_BROKER_ID: 1
+        KAFKA_ZOOKEEPER_CONNECT: zookeeper:32181
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+        KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+        KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+        KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+        KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
+
+    schema-registry:
+      image: confluentinc/cp-schema-registry:${CP_VERSION}
+      depends_on:
+        - zookeeper
+        - kafka
+      environment:
+        SCHEMA_REGISTRY_HOST_NAME: schema-registry
+        SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+
+
+    primary-ksqldb-server:
+      image: ${KSQL_IMAGE_BASE}confluentinc/ksqldb-server:${KSQL_VERSION}
+      hostname: primary-ksqldb-server
+      container_name: primary-ksqldb-server
+      depends_on:
+        - kafka
+        - schema-registry
+      ports:
+        - "8088:8088"
+      environment:
+        KSQL_LISTENERS: http://0.0.0.0:8088
+        KSQL_BOOTSTRAP_SERVERS: kafka:9092
+        KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+        KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+        KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+
+    additional-ksqldb-server:
+      image: ${KSQL_IMAGE_BASE}confluentinc/ksqldb-server:${KSQL_VERSION}
+      hostname: additional-ksqldb-server
+      depends_on:
+        - primary-ksqldb-server
+      ports:
+        - "8090"
+      environment:
+        KSQL_LISTENERS: http://0.0.0.0:8090
+        KSQL_BOOTSTRAP_SERVERS: kafka:9092
+        KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+    # Access the cli by running:
+    # > docker-compose exec ksqldb-cli  ksql http://primary-ksqldb-server:8088
+    ksqldb-cli:
+      image: ${KSQL_IMAGE_BASE}confluentinc/ksqldb-cli:${KSQL_VERSION}
+      container_name: ksqldb-cli
+      depends_on:
+        - primary-ksqldb-server
+      entrypoint: /bin/sh
+      tty: true
+
+
+>docker compose up.
+
+Test all services are up and running:
+>docker compose ps
+NAME                              IMAGE                                     COMMAND                  SERVICE                    CREATED             STATUS              PORTS
+ksql-additional-ksqldb-server-1   confluentinc/ksqldb-server:latest         "/usr/bin/docker/run"    additional-ksqldb-server   12 hours ago        Up 3 minutes        0.0.0.0:61795->8090/tcp
+ksql-kafka-1                      confluentinc/cp-enterprise-kafka:latest   "/etc/confluent/dock…"   kafka                      12 hours ago        Up 3 minutes        9092/tcp, 0.0.0.0:29092->29092/tcp
+ksql-schema-registry-1            confluentinc/cp-schema-registry:latest    "/etc/confluent/dock…"   schema-registry            12 hours ago        Up 3 minutes        8081/tcp
+ksql-zookeeper-1                  confluentinc/cp-zookeeper:latest          "/etc/confluent/dock…"   zookeeper                  12 hours ago        Up 3 minutes        2181/tcp, 2888/tcp, 3888/tcp
+ksqldb-cli                        confluentinc/ksqldb-cli:latest            "/bin/sh"                ksqldb-cli                 12 hours ago        Up 3 minutes
+primary-ksqldb-server             confluentinc/ksqldb-server:latest         "/usr/bin/docker/run"    primary-ksqldb-server      12 hours ago        Up 3 minutes        0.0.0.0:8088->8088/tcp
+.....................................................................................
+			   Core Stream Concepts
+....................................................................................
+
+Topic ->Partition
+Stream
+Tables
+
+KSqlDb:
+  It is event streaming database.
+
+Declare a Stream:
+ Stream Processing is a programming Paradigm for computing/processing over events as they arrive..
+ 
+Where do those events come from?
+  Kafka broker.
+ In kafka we store a collection of events in a structure called "topic".
+ Each Event contains any raw bytes that you want.
+ IN Ksql db you store events in a "stream".
+ A stream  is a topic with strongly schema.
+ Schema means structure which contains fields and data types eg: table in database.
+
+
+Syntax to define Stream:(KSQL Db syntax)
+.........................................
+
+CREATE STREAM NameStream(field1 DATATYPE KEY,field2 DATATYPE) WITH(
+  kafka_topic="nameofthetopic",
+  partions=2
+  value_format='json'
+)
+
+eg:
+CREATE STREAM vehicleLocations(id VARCHAR, lat DOUBLE,lng DOUBLE) WITH(
+  kafka_topic="vlocations",
+  partions=2
+  value_format='json'
+)
+
+topic: Name of the topic underlying the stream, if topic does not exist, kafka create ones.
+
+When you run this statement in ksql db client? What will happen?
+
+ if the topic does exit, it creates new topic with given partitions.
+ The stream meta data like column layout,serialization and other information is  placed  into ksqldb's command topic.
+
+
+After creation, the stream has no data in the begining?
+
+
+INSERT Rows:
+  In kafka , the event is modeled as a "record" and put into a topic.
+  In Ksqldb, you model an event as a Row and put it into a stream.
+  "Row is just record with additional Meta data".
+
+In short, In kafka world "event is Record" , where as KSQLDB "event is row"
+
+Row:
+  INSERT INTO   vehicleLocations(id,lat,lng) VALUES(1,823.899,6923.8934)
+  INSERT INTO   vehicleLocations(id,lat,lng) VALUES(2,893.899,82323.8934)
+  INSERT INTO   vehicleLocations(id,lat,lng) VALUES(3,8723.899,6223.8934)
+
+What will happen when you execute this statement?
+  
+ =>Each time you invoke INSERT Statement, a request will be sent to the KSQL Db server
+ =>The server verfies the syntax of the statement, if any error ,rows to be rejected
+ 
+ => The server creates a record and automatically serializes its content using the format of choice as defined in the schema defintion.
+
+ =>The ksqldb server uses a produce client to insert that record into the backing    kafka topic.
+ =>All of the stream's data is persisted on directly on the broker only, None of it    lives in the ksqldb servers.
+
+Transformation:
+  The primary purpose of streaming engine is to process data.
+Generally we read record from the topic by using application programs like java
+produce new result and we store into another topic.
+
+in ksql db you process topic in declarative way using "SQL like syntax".
+
+Stream Processing:
+
+  "A Materialized View"
+     persists the data returned from the view definition query and automatically gets updated as data changes in the underlying tables
+
+set 'auto.offset.reset' ='earliest'
+
+CREATE STREAM|TABLE riderLocations AS
+    SELECT field1,field2, field3 AS MyField
+    FROM vehicleLocations
+EMIT CHANGES;
+
+
+Materalized views:
+
+CREATE table riderLocations AS
+    SELECT lat,lng,AS longitude
+    FROM vehicleLocations
+EMIT CHANGES;
+
+When ever the data is populated into stream, that table triggered 
+
+Processing logics:
+1.transformation
+2.filtering
+3.Coimbinging
+etc...
+.....................................................................................
+
+Steps:
+1.start all services(broker,ksqldb,zookeeper,ksqldbclient..)
+2.start ksqldb interactive cli
+  
+>docker exec -it ksql-additional-ksqldb-server-1 ksql http://primary-ksqldb-server:8088
+OpenJDK 64-Bit Server VM warning: Option UseConcMarkSweepGC was deprecated in version 9.0 and will likely be removed in a future release.
+
+                  ===========================================
+                  =       _              _ ____  ____       =
+                  =      | | _____  __ _| |  _ \| __ )      =
+                  =      | |/ / __|/ _` | | | | |  _ \      =
+                  =      |   <\__ \ (_| | | |_| | |_) |     =
+                  =      |_|\_\___/\__, |_|____/|____/      =
+                  =                   |_|                   =
+                  =        The Database purpose-built       =
+                  =        for stream processing apps       =
+                  ===========================================
+
+Copyright 2017-2022 Confluent Inc.
+
+CLI v0.28.2, Server v0.28.2 located at http://primary-ksqldb-server:8088
+Server Status: RUNNING
+
+Having trouble? Type 'help' (case-insensitive) for a rundown of how things work!
+
+ksql>
+.................................................................................
+
+Create stream
+
+CREATE STREAM newriderLocations (profileId VARCHAR, latitude DOUBLE, longitude DOUBLE)
+>  WITH (kafka_topic='locations', value_format='json', partitions=1);
+
+ Message
+----------------
+ Stream created
+----------------
+
+Create Materialized Views:
+..........................
+
+CREATE TABLE currentLocation AS
+  SELECT profileId,
+         LATEST_BY_OFFSET(latitude) AS la,
+         LATEST_BY_OFFSET(longitude) AS lo
+  FROM newriderLocations
+  GROUP BY profileId
+  EMIT CHANGES;
+
+CREATE TABLE ridersNearMountainView AS
+  SELECT ROUND(GEO_DISTANCE(la, lo, 37.4133, -122.1162), -1) AS distanceInMiles,
+         COLLECT_LIST(profileId) AS riders,
+         COUNT(*) AS count
+  FROM currentLocation
+  GROUP BY ROUND(GEO_DISTANCE(la, lo, 37.4133, -122.1162), -1);
+
+
+  
+
+
+
 
 
 
