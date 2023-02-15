@@ -1483,6 +1483,212 @@ CREATE TABLE ridersNearMountainView AS
          COUNT(*) AS count
   FROM currentLocation
   GROUP BY ROUND(GEO_DISTANCE(la, lo, 37.4133, -122.1162), -1);
+.....................................................................................
+				Kafka
+
+
+Storage Layer- log, captures the events.
+events means something happened in the real world.
+events are represented as record, grouping events called batch
+batch is sent to the broker , where broker receives and stores into topic.
+topic is logical structure which stores event-record
+topic is broken into partitions-
+partition is just folder internally
+every partion has log file where events/records are presisted
+events or records organized as offset.
+offset is unique , growing number  to identify the record
+record is stored as bytes
+record may have key  value or without key(null key)
+partionary spilts records based roundrobin or hash value of the key.
+
+Each partition can be duplicated/replicated across multiple brokers
+
+Producer client produces record and sent to broker
+Consumer client reads record from the broker based on offset.
+             
+               "Kafka just stores events in time, with append mode,immutable"
+
+Can we process events/records in realtime to produce statistical data like sql processing
+
+kafka streams:
+  flow of events/records.
+  Stream can represent past future
+  while flowing,we can process the stream,generate new stream of records 
+
+How to represents stream?
+   Using kafka streaming api written java language
+   Using KSQLDb
+
+Stream and Table:
+................
+ Table represents the state of the world.  -  when it got changed/modified
+ Stream represents the history of the world - what happened
+
+ eg:
+  subramanian:"Arrived At banaglore on 15-02-23"
+  subramanian:"Took taxi"
+  subramnaian:"Reached city"
+immutable,appened only
+ 
+User table
+ id name status
+ 1  "XX" joined
+
+update the user status to left
+  
+Mutable representations
+
+Stream-table duality:
+
+  We can convert a stream into a table by using stream aggregating api like count,sum
+
+  We can convert a table into a stream by capturing the changes made to the table-insert,updates,deletes - into a "change stream" or CDC
+
+CDC;
+ Change data capture- when ever the state of the table gets changed,triggers event that event can be stored into kafka.
+
+Kafka Connectors :  and Streaming data pipelines
+
+A Streaming Pipeline is where we send data from the source to a target as the data happens , in a stream.
+
+Connector is a program or bridge / driver which helps transfer data from the source to sink.
+....................................................................................
+  	  CDC implementation using Debezium ,POSTGRESQL,kafka Streams
+...................................................................................
+
+Step :1 Build infrastructure
+Run kafka server,debezium server,Postgresql
+
+docker-compose.yml
+
+version: "3.7"
+services:
+  postgres:
+    image: debezium/postgres:13
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=docker
+      - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=exampledb
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.5.3
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-enterprise-kafka:5.5.3
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9991
+    ports:
+      - 9092:9092
+
+  debezium:
+    image: debezium/connect:1.4
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+    depends_on: [kafka]
+    ports:
+      - 8083:8083
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:5.5.3
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081,http://localhost:8081
+    ports:
+      - 8081:8081
+    depends_on: [zookeeper, kafka]
+
+
+database to debezium configuration:
+{
+  "name": "exampledb-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "docker",
+    "database.password": "docker",
+    "database.dbname": "exampledb",
+    "database.server.name": "postgres",
+    "table.include.list": "public.student"
+  }
+}
+
+>docker-compose up
+
+.....................................................................................
+
+Step 2:
+ Enter into database terminal and create table.
+
+C:\Users\sasub>docker exec -it 000e8c29abad /bin/sh
+# psql -U docker -d exampledb
+
+       \q to quit
+exampledb=# CREATE TABLE student(id integer primary key, name varchar);
+CREATE TABLE
+exampledb=# SELECT * FROM student;
+ id | name
+----+------
+(0 rows)
+
+exampledb=# ALTER TABLE public.student REPLICA IDENTITY FULL;
+ALTER TABLE
+
+
+STEP 3 : ENSURE THAT Debezium is connecting to Database
+Note: you have to the terminal where debezium.json file is located
+
+E:\session\IBM\2023\Feb\kafka\postgres_debezium>dir
+ Volume in drive E is New Volume
+ Volume Serial Number is 1894-7646
+
+ Directory of E:\session\IBM\2023\Feb\kafka\postgres_debezium
+
+15-02-2023  01.58 PM    <DIR>          .
+15-02-2023  01.58 PM    <DIR>          ..
+21-01-2022  11.26 PM               414 debezium.json
+21-01-2022  11.26 PM             1,540 docker-compose.yaml
+
+
+E:\session\IBM\2023\Feb\kafka\postgres_debezium>curl -i -X POST -H "Accept:application/json" -H "Content-type:application/json" 127.0.0.1:8083/connectors/ --data "@debezium.json"
+HTTP/1.1 201 Created
+Date: Wed, 15 Feb 2023 09:51:34 GMT
+Location: http://127.0.0.1:8083/connectors/exampledb-connector
+Content-Type: application/json
+Content-Length: 403
+Server: Jetty(9.4.33.v20201020)
+
+{"name":"exampledb-connector","config":{"connector.class":"io.debezium.connector.postgresql.PostgresConnector","plugin.name":"pgoutput","database.hostname":"postgres","database.port":"5432","database.user":"docker","database.password":"docker","database.dbname":"exampledb","database.server.name":"postgres","table.include.list":"public.student","name":"exampledb-connector"},"tasks":[],"type":"source"}
+............................***********..............................................
+			How to setup kafka in cloud
+.....................................................................................
+
+
+
+
+
+
+
+
+
 
 
   
